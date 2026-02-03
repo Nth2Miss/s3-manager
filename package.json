@@ -1,0 +1,17 @@
+{
+  "name": "s3-manager-pages",
+  "version": "1.0.0",
+  "description": "S3 Manager on Cloudflare Pages",
+  "dependencies": {
+    "aws4fetch": "^1.0.20",
+    "hono": "^4.11.7",
+    "wrangler": "^4.61.1"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

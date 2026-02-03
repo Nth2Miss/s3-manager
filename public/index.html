@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R2 资源管理器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        audio::-webkit-media-controls-panel { background-color: #f3f4f6; }
+        .file-card { transition: all 0.2s ease; }
+        .file-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-700 h-screen flex flex-col font-sans">
+
+    <header class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center z-20 sticky top-0 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-indigo-200 shadow-lg">
+                <i data-lucide="cloud" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-slate-800 tracking-tight">R2 Manager</h1>
+                <p class="text-xs text-slate-400" id="domain-indicator">Loading domain...</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <div class="hidden md:flex items-center bg-slate-100 rounded-full px-4 py-2 border border-transparent focus-within:border-indigo-300 transition-all">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+                <input type="text" id="searchInput" placeholder="搜索文件..." class="bg-transparent border-none outline-none text-sm ml-2 w-48 text-slate-600">
+            </div>
+
+            <div class="flex bg-slate-100 p-1 rounded-lg">
+                <button onclick="setView('grid')" id="btn-grid" class="p-2 rounded-md transition-all shadow-sm bg-white text-indigo-600"><i data-lucide="layout-grid" class="w-4 h-4"></i></button>
+                <button onclick="setView('list')" id="btn-list" class="p-2 rounded-md transition-all text-slate-400 hover:text-slate-600"><i data-lucide="list" class="w-4 h-4"></i></button>
+            </div>
+
+            <button onclick="toggleSettings()" class="p-2.5 rounded-full hover:bg-slate-100 text-slate-500 transition-colors border border-slate-200">
+                <i data-lucide="settings-2" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+<div id="settingsModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center transition-opacity opacity-0" style="transition: opacity 0.2s;">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-96 transform transition-all scale-95" style="transition: transform 0.2s;">
+        <h2 class="text-lg font-bold mb-5 flex items-center gap-2 text-slate-800">
+            <i data-lucide="settings" class="w-5 h-5 text-indigo-600"></i> 站点配置
+        </h2>
+        
+        <div class="space-y-5">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1.5">自定义域名 (CDN)</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-2.5 text-slate-400"><i data-lucide="globe" class="w-4 h-4"></i></span>
+                    <input type="text" id="customDomainInput" placeholder="https://cdn.example.com" class="w-full border border-slate-200 bg-slate-50 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all">
+                </div>
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-sm font-bold text-slate-700">图片自动压缩 (WebP)</label>
+                    
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="webpToggle" class="sr-only peer" onchange="toggleQualityInput()">
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+                
+                <div id="qualitySetting" class="transition-all duration-300 overflow-hidden max-h-20 opacity-100">
+                    <div class="bg-indigo-50 rounded-lg p-3 mt-2">
+                        <div class="flex justify-between text-xs mb-1 text-slate-500">
+                            <span>压缩质量</span>
+                            <span id="qualityValue" class="font-mono font-bold text-indigo-600">0.8</span>
+                        </div>
+                        <input type="range" id="qualityInput" min="0.1" max="1.0" step="0.1" value="0.8" class="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" oninput="document.getElementById('qualityValue').innerText = this.value">
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1.5 ml-1">开启后，所有上传的图片（SVG/GIF除外）将转为 WebP 格式以节省空间。</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 flex justify-end gap-3">
+            <button onclick="toggleSettings()" class="px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 rounded-lg transition-colors">取消</button>
+            <button onclick="saveSettings()" class="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5">保存配置</button>
+        </div>
+    </div>
+</div>
+
+    <main class="flex-1 overflow-hidden flex flex-col p-4 md:p-6 max-w-[1600px] mx-auto w-full">
+        
+        <div id="dropZone" class="group relative border-2 border-dashed border-indigo-100 rounded-2xl p-6 bg-white hover:bg-indigo-50/30 hover:border-indigo-400 transition-all cursor-pointer mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+            <input type="file" id="fileInput" multiple class="hidden">
+            <div class="flex items-center gap-4 pointer-events-none">
+                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-700">拖拽文件上传</h3>
+                    <p class="text-sm text-slate-400">支持批量上传，图片自动转 WebP</p>
+                </div>
+            </div>
+            <div class="flex items-center border border-slate-200 bg-white rounded-lg overflow-visible focus-within:ring-2 ring-indigo-500/20 relative z-50" onclick="event.stopPropagation()">
+                
+                <span class="pl-3 pr-2 text-slate-400"><i data-lucide="folder-open" class="w-4 h-4"></i></span>
+                
+                <input type="text" id="uploadPath" placeholder="上传路径 (可选)" class="py-2 text-sm outline-none w-32 sm:w-48 text-slate-600 placeholder:text-slate-300 bg-transparent">
+                
+                <div class="relative group px-2 py-2 cursor-help">
+                    <i data-lucide="circle-alert" class="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors"></i>
+                    
+                    <div class="absolute top-full right-0 mt-3 w-64 bg-white text-slate-600 text-xs rounded-lg p-4 shadow-xl border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 text-left leading-relaxed pointer-events-none transform origin-top scale-95 group-hover:scale-100">
+                        
+                        <p class="font-bold mb-2 text-indigo-600 text-sm flex items-center gap-1">
+                            <i data-lucide="lightbulb" class="w-3 h-3"></i> 路径小贴士
+                        </p>
+                        <p>输入如 <span class="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-500 font-mono border border-slate-200">photos/scenery/</span></p>
+                        <p class="mt-1 text-slate-400">系统会自动将文件归类到该文件夹。</p>
+                        
+                        <div class="absolute -top-1.5 right-2.5 w-3 h-3 bg-white border-t border-l border-slate-200 rotate-45"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between mb-4 px-1">
+            <div class="flex items-center gap-2 text-sm font-medium" id="breadcrumb"></div>
+            <span class="text-xs text-slate-400 bg-white px-2 py-1 rounded border border-slate-100 shadow-sm" id="fileCount">0 items</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto pr-2 no-scrollbar" id="scrollContainer">
+            <div id="fileList" class="pb-20"></div>
+        </div>
+    </main>
+
+    <div id="toast" class="fixed bottom-6 right-6 translate-y-24 opacity-0 transition-all duration-300 z-50">
+        <div class="bg-slate-800 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px]">
+            <i id="toastIcon" data-lucide="check-circle" class="text-green-400 w-5 h-5"></i>
+            <div>
+                <h4 id="toastTitle" class="font-bold text-sm">Success</h4>
+                <p id="toastMsg" class="text-xs text-slate-300">Operation completed</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="fixed inset-0 bg-white/60 backdrop-blur-sm z-40 hidden flex-col items-center justify-center">
+        <div class="animate-spin text-indigo-600 mb-2"><i data-lucide="loader-2" class="w-10 h-10"></i></div>
+        <p class="text-sm font-medium text-slate-500">Processing...</p>
+    </div>
+
+    <script>
+        let currentPath = '';
+        let viewMode = localStorage.getItem('viewMode') || 'grid';
+        let customDomain = localStorage.getItem('customDomain') || '';
+        let allFiles = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if(!customDomain) {
+                document.getElementById('domain-indicator').innerText = 'Mode: Proxy Only';
+            } else {
+                try {
+                    document.getElementById('domain-indicator').innerText = new URL(customDomain).hostname;
+                } catch(e) { document.getElementById('domain-indicator').innerText = 'Invalid Domain'; }
+                document.getElementById('customDomainInput').value = customDomain;
+            }
+            setView(viewMode);
+            loadFiles('');
+            lucide.createIcons();
+            
+            // 初始化 WebP 开关状态 (默认开启 true)
+            const webpEnabled = localStorage.getItem('webpEnabled') !== 'false'; 
+            document.getElementById('webpToggle').checked = webpEnabled;
+            toggleQualityInput(); // 根据初始状态显示/隐藏质量条
+            
+            // 初始化质量滑块数值显示
+            const savedQuality = localStorage.getItem('webpQuality') || 0.8;
+            document.getElementById('qualityInput').value = savedQuality;
+            document.getElementById('qualityValue').innerText = savedQuality;
+        });
+
+        function setView(mode) {
+            viewMode = mode;
+            localStorage.setItem('viewMode', mode);
+            
+            const gridBtn = document.getElementById('btn-grid');
+            const listBtn = document.getElementById('btn-list');
+            
+            if(mode === 'grid') {
+                gridBtn.className = "p-2 rounded-md transition-all shadow-sm bg-white text-indigo-600";
+                listBtn.className = "p-2 rounded-md transition-all text-slate-400 hover:text-slate-600";
+            } else {
+                listBtn.className = "p-2 rounded-md transition-all shadow-sm bg-white text-indigo-600";
+                gridBtn.className = "p-2 rounded-md transition-all text-slate-400 hover:text-slate-600";
+            }
+            renderFiles(allFiles);
+        }
+
+        // 新增：联动函数，开关关闭时隐藏质量条
+        function toggleQualityInput() {
+            const isEnabled = document.getElementById('webpToggle').checked;
+            const div = document.getElementById('qualitySetting');
+            if (isEnabled) {
+                div.style.maxHeight = '100px';
+                div.style.opacity = '1';
+                div.style.marginTop = '0px';
+            } else {
+                div.style.maxHeight = '0px';
+                div.style.opacity = '0';
+                div.style.marginTop = '-10px'; // 收起时微调布局
+            }
+        }
+
+        // 修改：弹窗动画控制
+        function toggleSettings() { 
+            const modal = document.getElementById('settingsModal');
+            const panel = modal.firstElementChild;
+            
+            if (modal.classList.contains('hidden')) {
+                // 打开
+                modal.classList.remove('hidden');
+                // nextFrame 确保 transition 生效
+                requestAnimationFrame(() => {
+                    modal.classList.remove('opacity-0');
+                    panel.classList.remove('scale-95');
+                    panel.classList.add('scale-100');
+                });
+            } else {
+                // 关闭
+                modal.classList.add('opacity-0');
+                panel.classList.remove('scale-100');
+                panel.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 200); // 等待动画结束
+            }
+        }
+        
+        // 修改：保存设置函数
+        function saveSettings() {
+            let domain = document.getElementById('customDomainInput').value.trim();
+            if (domain && !domain.startsWith('http')) domain = 'https://' + domain;
+            if (domain.endsWith('/')) domain = domain.slice(0, -1);
+            localStorage.setItem('customDomain', domain);
+            customDomain = domain;
+
+            // 保存 WebP 设置
+            const webpEnabled = document.getElementById('webpToggle').checked;
+            localStorage.setItem('webpEnabled', webpEnabled);
+            localStorage.setItem('webpQuality', document.getElementById('qualityInput').value);
+            
+            toggleSettings();
+            showToast('设置已保存', '配置已更新', 'success');
+            
+            // 延迟刷新
+            setTimeout(() => {
+                document.getElementById('domain-indicator').innerText = domain ? new URL(domain).hostname : 'Mode: Proxy Only';
+                // reload，更新变量,更稳妥
+                location.reload(); 
+            }, 800);
+        }
+
+        async function loadFiles(prefix) {
+            setLoading(true);
+            currentPath = prefix;
+            updateBreadcrumb(prefix);
+            try {
+                const res = await fetch(`/api/list?prefix=${encodeURIComponent(prefix)}`);
+                if (res.status === 401) return location.reload();
+                const data = await res.json();
+                allFiles = data;
+                renderFiles(data);
+                document.getElementById('fileCount').innerText = `${data.length} items`;
+            } catch(e) { console.error(e); showToast('加载失败', '检查网络', 'error'); }
+            setLoading(false);
+        }
+
+        function getMimeType(filename) {
+            const ext = filename.split('.').pop()?.toLowerCase();
+            switch (ext) {
+                case 'mp4': return 'video/mp4';
+                case 'webm': return 'video/webm';
+                case 'mov': return 'video/quicktime';
+                case 'avi': return 'video/x-msvideo';
+                case 'mp3': return 'audio/mpeg';
+                case 'wav': return 'audio/wav';
+                case 'm4a': return 'audio/mp4';
+                case 'aac': return 'audio/aac';
+                case 'jpg':
+                case 'jpeg': return 'image/jpeg';
+                case 'png': return 'image/png';
+                case 'gif': return 'image/gif';
+                case 'webp': return 'image/webp';
+                case 'svg': return 'image/svg+xml';
+                case 'pdf': return 'application/pdf';
+                case 'txt': return 'text/plain';
+                case 'html': return 'text/html';
+                case 'css': return 'text/css';
+                case 'js': return 'text/javascript';
+                case 'json': return 'application/json';
+                default: return 'application/octet-stream';
+            }
+        }
+        
+        function getFileCategory(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (['mp3', 'wav', 'aac', 'm4a', 'flac'].includes(ext)) return { type: 'audio', label: '音频', color: 'bg-green-100 text-green-700' };
+            if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return { type: 'video', label: '视频', color: 'bg-blue-100 text-blue-700' };
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return { type: 'image', label: '图片', color: 'bg-orange-100 text-orange-700' };
+            return { type: 'other', label: '其他', color: 'bg-gray-100 text-gray-500' };
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function renderFiles(items) {
+            const container = document.getElementById('fileList');
+            const isGrid = viewMode === 'grid';
+            
+            container.className = isGrid 
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                : 'flex flex-col gap-3';
+            
+            if (!items || items.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-20 flex flex-col items-center text-slate-300"><i data-lucide="ghost" class="w-16 h-16 mb-4 opacity-50"></i><p>无文件</p></div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                const folderName = item.key.replace(currentPath, '').replace('/', '');
+                
+                if (item.isFolder) {
+                    // --- 文件夹视图 ---
+                    if (isGrid) {
+                        return `
+                        <div onclick="loadFiles('${item.key}')" class="file-card cursor-pointer bg-white border border-slate-100 rounded-2xl p-6 flex flex-col items-center justify-center aspect-[4/3] group">
+                            <div class="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                <i data-lucide="folder" class="w-8 h-8 fill-current"></i>
+                            </div>
+                            <span class="font-bold text-slate-700 truncate max-w-full">${folderName}</span>
+                            <span class="text-xs text-slate-400 mt-1">Folder</span>
+                        </div>`;
+                    } else {
+                        return `
+                        <div onclick="loadFiles('${item.key}')" class="cursor-pointer bg-white border border-slate-100 rounded-xl p-4 flex items-center hover:bg-slate-50 transition-colors">
+                            <i data-lucide="folder" class="w-8 h-8 text-indigo-500 mr-4 fill-current"></i>
+                            <span class="font-bold text-slate-700">${folderName}</span>
+                        </div>`;
+                    }
+                } else {
+                    // --- 文件视图 ---
+                    const fileName = item.key.replace(currentPath, '');
+                    const category = getFileCategory(fileName);
+                    const uploadedTime = item.uploaded ? dayjs(item.uploaded).format('MM/DD HH:mm') : '-';
+                    const proxyUrl = `${window.location.origin}/api/file/${item.key}`; 
+                    const publicUrl = customDomain ? `${customDomain}/${item.key}` : proxyUrl;
+
+                    // 预览元素
+                    let previewHtml = '';
+                    if (isGrid) {
+                         if (category.type === 'audio') previewHtml = `<div class="w-full h-full flex items-center justify-center bg-slate-50 p-4"><audio controls class="w-full h-8 block" preload="none"><source src="${proxyUrl}"></audio></div>`;
+                         else if (category.type === 'video') {
+                             previewHtml = `
+                                 <div class="w-full h-full bg-black flex items-center justify-center">
+                                     <video 
+                                         controls 
+                                         playsinline 
+                                         preload="metadata" 
+                                         class="w-full h-full object-contain"
+                                         onplay="event.stopPropagation(); event.preventDefault();"
+                                         onclick="event.stopPropagation();"
+                                     >
+                                         <source src="${proxyUrl}" type="${getMimeType(fileName)}">
+                                     </video>
+                                 </div>`;
+                         }
+                         else if (category.type === 'image') previewHtml = `<img src="${proxyUrl}" loading="lazy" class="w-full h-full object-cover">`;
+                         else previewHtml = `<div class="w-full h-full flex items-center justify-center bg-slate-50"><i data-lucide="file-text" class="w-12 h-12 text-slate-300"></i></div>`;
+                    } else {
+                        // 列表模式的小图标
+                        previewHtml = category.type === 'image' 
+                            ? `<img src="${proxyUrl}" loading="lazy" class="w-full h-full object-cover">`
+                            : `<i data-lucide="file" class="text-slate-400 w-6 h-6"></i>`;
+                    }
+
+                    if (isGrid) {
+                        // === Grid View ===
+                        return `
+                        <div class="file-card bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                            <div class="p-3 flex items-center justify-between border-b border-slate-50">
+                                <div class="flex items-center gap-2 max-w-[85%]">
+                                    <i data-lucide="file" class="w-4 h-4 text-slate-400 flex-shrink-0"></i>
+                                    <span class="text-sm font-bold text-slate-700 truncate" title="${fileName}">${fileName}</span>
+                                </div>
+                            </div>
+                            <div class="h-40 w-full overflow-hidden relative">${previewHtml}</div>
+                            <div class="p-4 flex-1 flex flex-col gap-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs text-slate-400">${uploadedTime}</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full ${category.color} font-medium">${category.label}</span>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                                        <span class="text-[10px] font-bold text-slate-500 w-10 flex-shrink-0">Proxy</span>
+                                        <input readonly value="${proxyUrl}" class="flex-1 bg-transparent text-[10px] text-indigo-600 truncate focus:outline-none" onclick="this.select()">
+                                        <button onclick="copyToClipboard('${proxyUrl}')" class="text-slate-400 hover:text-indigo-600"><i data-lucide="copy" class="w-3 h-3"></i></button>
+                                    </div>
+                                    <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                                        <span class="text-[10px] font-bold text-slate-500 w-10 flex-shrink-0">CDN</span>
+                                        <input readonly value="${publicUrl}" class="flex-1 bg-transparent text-[10px] text-green-600 truncate focus:outline-none" onclick="this.select()">
+                                        <button onclick="copyToClipboard('${publicUrl}')" class="text-slate-400 hover:text-green-600"><i data-lucide="copy" class="w-3 h-3"></i></button>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center mt-auto pt-2">
+                                    <span class="text-xs font-bold text-slate-700">${formatSize(item.size)}</span>
+                                    <div class="flex gap-2">
+                                        <a href="${proxyUrl}" download="${fileName}" class="p-1.5 rounded-full hover:bg-indigo-50 text-slate-400 hover:text-indigo-600"><i data-lucide="download" class="w-4 h-4"></i></a>
+                                        <button onclick="deleteFile(event, '${item.key}')" class="p-1.5 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                    } else {
+                        // === List View  ===
+                        return `
+                        <div class="bg-white border border-slate-100 rounded-xl p-3 flex flex-col lg:flex-row gap-4 hover:shadow-md transition-all group relative">
+                            <div class="flex items-center gap-4 flex-1 min-w-0">
+                                <div class="w-12 h-12 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0 overflow-hidden border border-slate-100">
+                                    ${previewHtml}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <p class="font-bold text-slate-700 truncate text-sm" title="${fileName}">${fileName}</p>
+                                        <span class="text-[10px] ${category.color} px-1.5 py-0.5 rounded flex-shrink-0">${category.label}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-xs text-slate-400 mt-1">
+                                        <span class="font-mono text-slate-500 font-bold">${formatSize(item.size)}</span>
+                                        <span class="text-slate-300">|</span>
+                                        <span>${uploadedTime}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col justify-center gap-1.5 w-full lg:w-[45%] bg-slate-50/50 p-2 rounded-lg border border-slate-100/50">
+                                <div class="flex items-center gap-2">
+                                    <div class="bg-indigo-100 text-indigo-600 text-[10px] font-bold px-1.5 rounded flex-shrink-0 w-12 text-center">Proxy</div>
+                                    <input readonly value="${proxyUrl}" class="flex-1 bg-transparent text-[11px] text-slate-600 font-mono truncate focus:outline-none select-all" onclick="this.select()">
+                                    <button onclick="copyToClipboard('${proxyUrl}')" class="text-slate-400 hover:text-indigo-600 p-0.5 rounded hover:bg-white"><i data-lucide="copy" class="w-3 h-3"></i></button>
+                                </div>
+                                <div class="flex items-center gap-2 border-t border-slate-200/50 pt-1.5 sm:border-t-0 sm:pt-0">
+                                    <div class="bg-green-100 text-green-600 text-[10px] font-bold px-1.5 rounded flex-shrink-0 w-12 text-center">CDN</div>
+                                    <input readonly value="${publicUrl}" class="flex-1 bg-transparent text-[11px] text-slate-600 font-mono truncate focus:outline-none select-all" onclick="this.select()">
+                                    <button onclick="copyToClipboard('${publicUrl}')" class="text-slate-400 hover:text-green-600 p-0.5 rounded hover:bg-white"><i data-lucide="copy" class="w-3 h-3"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-1 justify-end lg:w-20 lg:border-l border-slate-100 pl-2">
+                                <a href="${proxyUrl}" download="${fileName}" class="p-2 rounded hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-colors" title="下载"><i data-lucide="download" class="w-4 h-4"></i></a>
+                                <button onclick="deleteFile(event, '${item.key}')" class="p-2 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title="删除"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>`;
+                    }
+                }
+            }).join('');
+            lucide.createIcons();
+        }
+
+        async function copyToClipboard(text) {
+            try { await navigator.clipboard.writeText(text); showToast('已复制', text); }
+            catch (err) { showToast('复制失败', '手动复制', 'error'); }
+        }
+
+        function updateBreadcrumb(prefix) {
+            const parts = prefix.split('/').filter(p => p);
+            let html = '<span class="cursor-pointer hover:text-indigo-600 flex items-center" onclick="loadFiles(\'\')"><i data-lucide="home" class="w-4 h-4 mr-1"></i> 首页</span>';
+            let buildPath = '';
+            parts.forEach(p => { buildPath += p + '/'; html += ` <i data-lucide="chevron-right" class="w-3 h-3 mx-1 text-slate-300"></i> <span class="cursor-pointer hover:text-indigo-600 font-bold" onclick="loadFiles('${buildPath}')">${p}</span>`; });
+            document.getElementById('breadcrumb').innerHTML = html;
+            lucide.createIcons();
+        }
+
+        async function deleteFile(e, key) {
+            e.stopPropagation();
+            if(!confirm('确定删除此文件吗？')) return;
+            setLoading(true);
+            try { await fetch(`/api/delete?key=${encodeURIComponent(key)}`, { method: 'DELETE' }); showToast('删除成功', ''); loadFiles(currentPath); }
+            catch(e) { showToast('删除失败', e.message, 'error'); }
+            setLoading(false);
+        }
+
+        // 5. 核心修改：上传逻辑读取开关
+        async function uploadFiles(files) {
+            const path = document.getElementById('uploadPath').value.trim();
+            let cleanPath = path.replace(/^\/+/,''); 
+            if (cleanPath && !cleanPath.endsWith('/')) cleanPath += '/';
+                    
+            // 读取开关状态
+            const webpEnabled = localStorage.getItem('webpEnabled') !== 'false';
+            const quality = parseFloat(localStorage.getItem('webpQuality')) || 0.8;
+                    
+            setLoading(true);
+            let count = 0;
+        
+            for (let file of files) {
+                try {
+                    let body = file;
+                    let finalName = cleanPath + file.name;
+                    let mime = file.type;
+        
+                    // 只有在开关开启 && 是图片 && 不是动图/SVG 时才压缩
+                    if (webpEnabled && file.type.startsWith('image/') && !file.type.includes('svg') && !file.type.includes('gif')) {
+                        body = await processImage(file, quality);
+                        // 改后缀
+                        finalName = cleanPath + file.name.replace(/\.[^/.]+$/, "") + ".webp";
+                        mime = 'image/webp';
+                    }
+        
+                    const res = await fetch('/api/upload', {
+                        method: 'PUT',
+                        headers: { 
+                            'x-file-name': finalName, 
+                            'content-type': mime 
+                        },
+                        body: body
+                    });
+                    if(res.ok) count++;
+                } catch(e) { console.error(e); }
+            }
+                    
+            setLoading(false);
+            showToast('上传完成', `成功上传 ${count} 个文件`);
+            loadFiles(currentPath);
+        }
+
+        async function processImage(file, quality) {
+            return new Promise((resolve) => {
+                const img = new Image(); const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+                    canvas.toBlob((blob) => resolve(blob), 'image/webp', quality);
+                };
+                img.onerror = () => resolve(file); img.src = url;
+            });
+        }
+
+        function showToast(title, msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastTitle').innerText = title; document.getElementById('toastMsg').innerText = msg;
+            const icon = document.getElementById('toastIcon');
+            if(type === 'error') { icon.className = "text-red-400 w-5 h-5"; icon.innerHTML = '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>'; }
+            else { icon.className = "text-green-400 w-5 h-5"; icon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>'; }
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-24', 'opacity-0'), 3000);
+        }
+        function setLoading(state) { document.getElementById('loading').style.display = state ? 'flex' : 'none'; }
+        
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            if(!val) return renderFiles(allFiles);
+            renderFiles(allFiles.filter(f => f.key.toLowerCase().includes(val)));
+        });
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => uploadFiles(e.target.files));
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }));
+        dropZone.addEventListener('drop', (e) => uploadFiles(e.dataTransfer.files));
+    </script>
+</body>
+</html>
