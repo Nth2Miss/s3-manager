@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { handle } from 'hono/cloudflare-pages'
 import { basicAuth } from 'hono/basic-auth'
 import { AwsClient } from 'aws4fetch'
+import { setCookie, getCookie } from 'hono/cookie' // 确保引入 cookie 辅助函数
 
 type Bindings = {
   AUTH_USER: string
@@ -62,10 +63,48 @@ function getMimeType(filename: string): string {
   }
 }
 
-// 鉴权
+// === 鉴权中间件 (修改版：基于 Cookie) ===
 api.use('/*', async (c, next) => {
-  const auth = basicAuth({ username: c.env.AUTH_USER, password: c.env.AUTH_PASSWORD })
-  return auth(c, next)
+  // 1. 如果是登录接口，直接放行
+  if (c.req.path === '/api/login') {
+    return next()
+  }
+
+  // 2. 检查 Cookie
+  const session = getCookie(c, 'auth_session')
+  const correctAuth = btoa(`${c.env.AUTH_USER}:${c.env.AUTH_PASSWORD}`)
+
+  // 3. 如果 Cookie 不存在或不对，返回 401
+  if (!session || session !== correctAuth) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  // 验证通过，继续
+  await next()
+})
+
+// === 新增 API: 登录接口 ===
+api.post('/login', async (c) => {
+  const body = await c.req.json()
+  const { username, password } = body
+
+  if (username === c.env.AUTH_USER && password === c.env.AUTH_PASSWORD) {
+    // 生成 Token (这里简单用 base64，生产环境建议用更复杂的签名)
+    const token = btoa(`${username}:${password}`)
+    
+    // 设置 Cookie (HttpOnly, 7天过期)
+    setCookie(c, 'auth_session', token, {
+      path: '/',
+      secure: true,
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'Strict',
+    })
+    
+    return c.json({ success: true })
+  }
+  
+  return c.json({ success: false, error: '用户名或密码错误' }, 401)
 })
 
 // === API 1: 获取列表  ===
