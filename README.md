@@ -62,6 +62,7 @@
 
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)。
 2. 进入 **Workers & Pages** -> **Create Application** -> **Pages** -> **Connect to Git**。
+   ![cf_pages](docs/cf_pages.png)
 3. 选择你刚才 Fork 的仓库。
 
 ### 3. 构建配置
@@ -71,10 +72,11 @@
 * **框架预设**: `无`
 * **构建命令**: `npm install`
 * **构建输出目录**: `public`  
+  ![pages_build](docs/pages_build.png)
 
 ### 4. 设置环境变量 (Environment Variables)
 
-在项目设置页面添加以下变量：
+在项目创建时可以添加变量，如果项目已经创建，则在**pages** -> **设置** -> **构建** -> **变量与机密** 中添加以下变量：：
 
 | 变量名                    | 说明                | 示例值                                     |
 |:---------------------- |:----------------- |:--------------------------------------- |
