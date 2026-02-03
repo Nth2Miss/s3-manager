@@ -68,9 +68,9 @@
 
 在 **Build settings** 中填写：
 
-* **Framework preset**: `None`
-* **Build command**: (保持留空)
-* **Build output directory**: `public`  
+* **框架预设**: `无`
+* **构建命令**: `npm install`
+* **构建输出目录**: `public`  
 
 ### 4. 设置环境变量 (Environment Variables)
 
