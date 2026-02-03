@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>R2/S3 管理面板</title>
-    <link rel="icon" type="image/svg+xml" href="/icon.png">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -12,7 +13,22 @@
             theme: {
                 extend: {
                     colors: {
-                        // 你可以在这里扩展颜色，如果不需要保持默认即可
+                        // 扩展颜色配置
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'shake': 'shake 0.3s ease-in-out'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '25%': { transform: 'translateX(-5px)' },
+                            '75%': { transform: 'translateX(5px)' }
+                        }
                     }
                 }
             }
@@ -21,31 +37,23 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
     <style>
+        /* 隐藏滚动条但允许滚动 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
         audio::-webkit-media-controls-panel { background-color: #f3f4f6; }
+        .dark audio::-webkit-media-controls-panel { background-color: #334155; }
+        
         .file-card { transition: all 0.2s ease; }
         .file-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-    </style>
-    <style>
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-        .animate-shake {
-            animation: shake 0.3s ease-in-out;
-        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300 h-screen flex flex-col font-sans">
 
     <div id="loginModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center transition-all duration-500">
-        
         <div class="absolute inset-0 bg-slate-200/50 dark:bg-slate-900/80 backdrop-blur-md transition-colors duration-500"></div>
 
         <div class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-white/50 dark:border-slate-700 p-8 rounded-2xl shadow-2xl w-full max-w-sm mx-4 transition-all duration-300">
-            
             <div class="text-center mb-8">
                 <div class="mx-auto w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4 border border-indigo-100 dark:border-indigo-500/20">
                     <i data-lucide="cloud" class="w-8 h-8 text-indigo-600 dark:text-indigo-400"></i>
@@ -79,9 +87,9 @@
         </div>
     </div>
 
-    <header class="bg-white dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex justify-between items-center z-40 sticky top-0 shadow-sm">
+    <header class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex justify-between items-center z-40 sticky top-0 shadow-sm transition-colors">
         <div class="flex items-center gap-3">
-            <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-indigo-200 shadow-lg">
+            <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-indigo-200 dark:shadow-none shadow-lg">
                 <i data-lucide="cloud" class="w-6 h-6"></i>
             </div>
             <div>
@@ -91,18 +99,17 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-700/60 rounded-full px-4 py-2 border border-transparent focus-within:border-indigo-300 transition-all">
+            <div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-700/60 rounded-full px-4 py-2 border border-transparent focus-within:border-indigo-300 dark:focus-within:border-indigo-500 transition-all">
                 <i data-lucide="search" class="w-4 h-4 text-slate-400 dark:text-slate-500"></i>
-                <input type="text" id="searchInput" placeholder="搜索文件..." class="bg-transparent border-none outline-none text-sm ml-2 w-48 text-slate-600 dark:text-slate-300">
+                <input type="text" id="searchInput" placeholder="搜索文件..." class="bg-transparent border-none outline-none text-sm ml-2 w-48 text-slate-600 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500">
             </div>
 
-            <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
-                <button onclick="setView('grid')" id="btn-grid" class="p-2 rounded-md transition-all shadow-sm bg-white dark:bg-slate-800 text-indigo-600"><i data-lucide="layout-grid" class="w-4 h-4"></i></button>
-                <button onclick="setView('list')" id="btn-list" class="p-2 rounded-md transition-all text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><i data-lucide="list" class="w-4 h-4"></i></button>
+            <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg border border-slate-200 dark:border-slate-600">
+                <button onclick="setView('grid')" id="btn-grid" class="p-2 rounded-md transition-all shadow-sm bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400" title="网格视图"><i data-lucide="layout-grid" class="w-4 h-4"></i></button>
+                <button onclick="setView('list')" id="btn-list" class="p-2 rounded-md transition-all text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" title="列表视图"><i data-lucide="list" class="w-4 h-4"></i></button>
             </div>
 
             <div class="flex items-center gap-2">
-                
                 <button onclick="cycleTheme()" class="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 rounded-lg transition-colors relative group" title="切换主题">
                     <i id="themeIcon" data-lucide="monitor" class="w-5 h-5"></i>
                 </button>
@@ -114,63 +121,62 @@
         </div>
     </header>
 
-<div id="settingsModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center transition-opacity opacity-0" style="transition: opacity 0.2s;">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-96 transform transition-all scale-95" style="transition: transform 0.2s;">
-        <h2 class="text-lg font-bold mb-5 flex items-center gap-2 text-slate-800 dark:text-white">
-            <i data-lucide="settings" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i> 站点配置
-        </h2>
-        
-        <div class="space-y-5">
-            <div>
-                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">自定义域名 (CDN)</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500"><i data-lucide="globe" class="w-4 h-4"></i></span>
-                    <input type="text" id="customDomainInput" placeholder="https://cdn.example.com" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all text-slate-600 dark:text-slate-300">
-                </div>
-            </div>
-
-            <div class="flex items-center justify-between mt-3 mb-4 bg-slate-50 dark:bg-slate-700 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center transition-opacity opacity-0" style="transition: opacity 0.2s;">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-96 transform transition-all scale-95 border border-slate-100 dark:border-slate-700" style="transition: transform 0.2s;">
+            <h2 class="text-lg font-bold mb-5 flex items-center gap-2 text-slate-800 dark:text-white">
+                <i data-lucide="settings" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i> 站点配置
+            </h2>
+            
+            <div class="space-y-5">
                 <div>
-                    <label class="text-sm font-bold text-slate-700 dark:text-slate-300">使用 CDN 预览资源</label>
-                    <p class="text-xs text-slate-400 dark:text-slate-500">开启后，列表缩略图将通过自定义域名加载 (更快)</p>
+                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">自定义域名 (CDN)</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500"><i data-lucide="globe" class="w-4 h-4"></i></span>
+                        <input type="text" id="customDomainInput" placeholder="https://cdn.example.com" class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all text-slate-600 dark:text-slate-300">
+                    </div>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="cdnPreviewToggle" class="sr-only peer">
-                    <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                </label>
-            </div>
 
-            <div class="border-t border-slate-100 dark:border-slate-700 my-4"></div>
-
-            <div>
-                <div class="flex items-center justify-between mb-2">
-                    <label class="text-sm font-bold text-slate-700 dark:text-slate-300">图片自动压缩 (WebP)</label>
-                    
+                <div class="flex items-center justify-between mt-3 mb-4 bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <div>
+                        <label class="text-sm font-bold text-slate-700 dark:text-slate-300">使用 CDN 预览资源</label>
+                        <p class="text-xs text-slate-400 dark:text-slate-500">缩略图通过自定义域名加载 (更快)</p>
+                    </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="webpToggle" class="sr-only peer" onchange="toggleQualityInput()">
-                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        <input type="checkbox" id="cdnPreviewToggle" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-300 dark:bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                     </label>
                 </div>
-                
-                <div id="qualitySetting" class="transition-all duration-300 overflow-hidden max-h-20 opacity-100">
-                    <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 mt-2">
-                        <div class="flex justify-between text-xs mb-1 text-slate-500 dark:text-slate-400">
-                            <span>压缩质量</span>
-                            <span id="qualityValue" class="font-mono font-bold text-indigo-600 dark:text-indigo-400">0.8</span>
-                        </div>
-                        <input type="range" id="qualityInput" min="0.1" max="1.0" step="0.1" value="0.8" class="w-full h-2 bg-indigo-200 dark:bg-indigo-700 rounded-lg appearance-none cursor-pointer accent-indigo-600" oninput="document.getElementById('qualityValue').innerText = this.value">
+
+                <div class="border-t border-slate-100 dark:border-slate-700 my-4"></div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-sm font-bold text-slate-700 dark:text-slate-300">图片自动压缩 (WebP)</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="webpToggle" class="sr-only peer" onchange="toggleQualityInput()">
+                            <div class="w-11 h-6 bg-slate-200 dark:bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
                     </div>
-                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1.5 ml-1">开启后，所有上传的图片（SVG/GIF除外）将转为 WebP 格式以节省空间。</p>
+                    
+                    <div id="qualitySetting" class="transition-all duration-300 overflow-hidden max-h-20 opacity-100">
+                        <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 mt-2">
+                            <div class="flex justify-between text-xs mb-1 text-slate-500 dark:text-slate-400">
+                                <span>压缩质量</span>
+                                <span id="qualityValue" class="font-mono font-bold text-indigo-600 dark:text-indigo-400">0.8</span>
+                            </div>
+                            <input type="range" id="qualityInput" min="0.1" max="1.0" step="0.1" value="0.8" class="w-full h-2 bg-indigo-200 dark:bg-indigo-700 rounded-lg appearance-none cursor-pointer accent-indigo-600" oninput="document.getElementById('qualityValue').innerText = this.value">
+                        </div>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1.5 ml-1">上传图片(除SVG/GIF)转为 WebP 以节省空间。</p>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="mt-8 flex justify-end gap-3">
-            <button onclick="toggleSettings()" class="px-4 py-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors">取消</button>
-            <button onclick="saveSettings()" class="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5">保存配置</button>
+            <div class="mt-8 flex justify-end gap-3">
+                <button onclick="toggleSettings()" class="px-4 py-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors">取消</button>
+                <button onclick="saveSettings()" class="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none transition-all hover:-translate-y-0.5">保存配置</button>
+            </div>
         </div>
     </div>
-</div>
 
     <main class="flex-1 overflow-hidden flex flex-col p-4 md:p-6 max-w-[1600px] mx-auto w-full">
         
@@ -194,14 +200,12 @@
                 <div class="relative group px-2 py-2 cursor-help">
                     <i data-lucide="circle-alert" class="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors"></i>
                     
-                    <div class="absolute top-full right-0 mt-3 w-64 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs rounded-lg p-4 shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 text-left leading-relaxed pointer-events-none transform origin-top scale-95 group-hover:scale-100">
-                        
+                    <div class="absolute top-full right-0 mt-3 w-64 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs rounded-lg p-4 shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 text-left leading-relaxed pointer-events-none transform origin-top scale-95 group-hover:scale-100 z-50">
                         <p class="font-bold mb-2 text-indigo-600 dark:text-indigo-400 text-sm flex items-center gap-1">
                             <i data-lucide="lightbulb" class="w-3 h-3"></i> 路径小贴士
                         </p>
                         <p>输入如 <span class="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-indigo-500 dark:text-indigo-400 font-mono border border-slate-200 dark:border-slate-700">photos/scenery/</span></p>
                         <p class="mt-1 text-slate-400 dark:text-slate-500">系统会自动将文件归类到该文件夹。</p>
-                        
                         <div class="absolute -top-1.5 right-2.5 w-3 h-3 bg-white dark:bg-slate-800 border-t border-l border-slate-200 dark:border-slate-700 rotate-45"></div>
                     </div>
                 </div>
@@ -218,301 +222,102 @@
         </div>
     </main>
 
-    <div id="toast" class="fixed bottom-6 right-6 translate-y-24 opacity-0 transition-all duration-300 z-50">
-        <div class="bg-slate-800 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px]">
-            <i id="toastIcon" data-lucide="check-circle" class="text-green-400 w-5 h-5"></i>
-            <div>
-                <h4 id="toastTitle" class="font-bold text-sm">Success</h4>
-                <p id="toastMsg" class="text-xs text-slate-300">Operation completed</p>
-            </div>
-        </div>
-    </div>
+    <div id="toast" class="fixed bottom-6 right-6 z-[200]"></div>
 
-    <div id="loading" class="fixed inset-0 bg-white/60 backdrop-blur-sm z-40 hidden flex-col items-center justify-center">
-        <div class="animate-spin text-indigo-600 mb-2"><i data-lucide="loader-2" class="w-10 h-10"></i></div>
-        <p class="text-sm font-medium text-slate-500">Processing...</p>
+    <div id="loading" class="fixed inset-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm z-[200] hidden flex-col items-center justify-center">
+        <div class="animate-spin text-indigo-600 dark:text-indigo-400 mb-2"><i data-lucide="loader-2" class="w-10 h-10"></i></div>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Processing...</p>
     </div>
 
     <script>
+        // === 全局变量 ===
         let currentPath = '';
-        let viewMode = localStorage.getItem('viewMode') || 'grid';
         let customDomain = localStorage.getItem('customDomain') || '';
-        let allFiles = [];
+        let viewMode = localStorage.getItem('viewMode') || 'grid';
+        let allFiles = []; // 保存当前文件数据，防止切换视图时清空
 
-        // 登录处理函数
-        async function handleLogin(e) {
-            e.preventDefault();
-            const btn = document.getElementById('loginBtn');
-            const user = document.getElementById('loginUser').value;
-            const pass = document.getElementById('loginPass').value;
-            
-            // 按钮 Loading 态
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> 验证中...`;
-            btn.disabled = true;
-            lucide.createIcons();
-
-            try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: user, password: pass })
-                });
-
-                if (res.ok) {
-                    // 登录成功，隐藏模态框，加载文件
-                    document.getElementById('loginModal').classList.add('hidden');
-                    loadFiles(currentPath);
-                } else {
-                    showToast('登录失败', '账号或密码错误', 'error');
-                    btn.classList.add('animate-shake'); // 错误震动动画
-                    setTimeout(() => btn.classList.remove('animate-shake'), 500);
-                }
-            } catch (err) {
-                showToast('错误', '网络连接异常', 'error');
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                lucide.createIcons();
-            }
-        }
-
+        // === 1. 初始化逻辑 ===
         document.addEventListener('DOMContentLoaded', async () => {
-            // 1. 初始化图标等 UI (保留之前的)
             lucide.createIcons();
+
+            // 回填设置
+            const savedDomain = localStorage.getItem('customDomain');
+            if (savedDomain) {
+                document.getElementById('customDomainInput').value = savedDomain;
+                customDomain = savedDomain;
+            }
+            
             const webpEnabled = localStorage.getItem('webpEnabled') !== 'false'; 
             document.getElementById('webpToggle').checked = webpEnabled;
             toggleQualityInput();
+            
             const savedQuality = localStorage.getItem('webpQuality') || 0.8;
             document.getElementById('qualityInput').value = savedQuality;
             document.getElementById('qualityValue').innerText = savedQuality;
+            
             const previewViaCDN = localStorage.getItem('previewViaCDN') === 'true';
             document.getElementById('cdnPreviewToggle').checked = previewViaCDN;
 
-            // 2. 尝试加载文件以检查登录状态
+            // 初始化视图按钮状态
+            updateViewButtons();
+
+            // 初始化主题
+            initTheme();
+
+            // 更新顶部域名指示器
+            updateDomainStatus();
+
+            // 尝试加载文件 (鉴权检查)
             try {
                 const res = await fetch(`/api/list?prefix=`);
                 if (res.status === 401) {
-                    // 未登录：确保登录框显示
                     document.getElementById('loginModal').classList.remove('hidden');
                 } else if (res.ok) {
-                    // 已登录：隐藏登录框，渲染数据
                     document.getElementById('loginModal').classList.add('hidden');
                     const data = await res.json();
+                    allFiles = data; // 保存数据到全局
                     renderFiles(data);
                     updateBreadcrumb('');
                 }
             } catch (e) {
                 console.error(e);
             }
-            
-            // 3. 初始化主题
-            initTheme();
         });
 
-        function setView(mode) {
-            viewMode = mode;
-            localStorage.setItem('viewMode', mode);
-            
-            const gridBtn = document.getElementById('btn-grid');
-            const listBtn = document.getElementById('btn-list');
-            
-            if(mode === 'grid') {
-                gridBtn.className = "p-2 rounded-md transition-all shadow-sm bg-white text-indigo-600";
-                listBtn.className = "p-2 rounded-md transition-all text-slate-400 hover:text-slate-600";
-            } else {
-                listBtn.className = "p-2 rounded-md transition-all shadow-sm bg-white text-indigo-600";
-                gridBtn.className = "p-2 rounded-md transition-all text-slate-400 hover:text-slate-600";
-            }
-            renderFiles(allFiles);
-        }
-
-        // 新增：联动函数，开关关闭时隐藏质量条
-        function toggleQualityInput() {
-            const isEnabled = document.getElementById('webpToggle').checked;
-            const div = document.getElementById('qualitySetting');
-            if (isEnabled) {
-                div.style.maxHeight = '100px';
-                div.style.opacity = '1';
-                div.style.marginTop = '0px';
-            } else {
-                div.style.maxHeight = '0px';
-                div.style.opacity = '0';
-                div.style.marginTop = '-10px'; // 收起时微调布局
-            }
-        }
-
-        // 修改：弹窗动画控制
-        function toggleSettings() { 
-            const modal = document.getElementById('settingsModal');
-            const panel = modal.firstElementChild;
-            
-            if (modal.classList.contains('hidden')) {
-                // 打开
-                modal.classList.remove('hidden');
-                // nextFrame 确保 transition 生效
-                requestAnimationFrame(() => {
-                    modal.classList.remove('opacity-0');
-                    panel.classList.remove('scale-95');
-                    panel.classList.add('scale-100');
-                });
-            } else {
-                // 关闭
-                modal.classList.add('opacity-0');
-                panel.classList.remove('scale-100');
-                panel.classList.add('scale-95');
-                setTimeout(() => modal.classList.add('hidden'), 200); // 等待动画结束
-            }
-        }
-        
-        // 修改：保存设置函数
-        function saveSettings() {
-            let domain = document.getElementById('customDomainInput').value.trim();
-            if (domain && !domain.startsWith('http')) domain = 'https://' + domain;
-            if (domain.endsWith('/')) domain = domain.slice(0, -1);
-            localStorage.setItem('customDomain', domain);
-            customDomain = domain;
-
-            // 保存 CDN 预览设置
-            localStorage.setItem('previewViaCDN', document.getElementById('cdnPreviewToggle').checked);
-
-            // 保存 WebP 设置
-            const webpEnabled = document.getElementById('webpToggle').checked;
-            localStorage.setItem('webpEnabled', webpEnabled);
-            localStorage.setItem('webpQuality', document.getElementById('qualityInput').value);
-            
-            toggleSettings();
-            showToast('设置已保存', '配置已更新', 'success');
-            
-            // 延迟刷新
-            setTimeout(() => {
-                document.getElementById('domain-indicator').innerText = domain ? new URL(domain).hostname : 'Mode: Proxy Only';
-                // reload，更新变量,更稳妥
-                location.reload(); 
-            }, 800);
-        }
-
-        // === 主题管理逻辑 ===
-        let themeMode = localStorage.getItem('theme') || 'system';
-
-        // 1. 初始化
-        function initTheme() {
-            // 监听系统变化
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-                if (themeMode === 'system') applyTheme();
-            });
-            applyTheme();
-        }
-
-        // 2. 应用主题
-        function applyTheme() {
-            const isDark = themeMode === 'dark' || 
-                      (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        
-            // 切换 HTML class
-            if (isDark) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-
-            // 更新图标
-            const icon = document.getElementById('themeIcon');
-            if (icon) {
-                // 先移除所有可能的图标 class (如果是 font awesome 等)，这里只需要改 data-lucide 属性
-                // 但 Lucide 需要重新渲染，所以我们直接替换 HTML 或者用 Lucide 的 API
-                // 简单粗暴法：根据状态修改 data-lucide 并重新 createIcons
-                if (themeMode === 'light') icon.setAttribute('data-lucide', 'sun');
-                else if (themeMode === 'dark') icon.setAttribute('data-lucide', 'moon');
-                else icon.setAttribute('data-lucide', 'monitor');
-                
-                lucide.createIcons();
-            }
-        }
-
-        // 3. 切换按钮点击事件 (循环：系统 -> 亮 -> 暗)
-        function cycleTheme() {
-            if (themeMode === 'system') themeMode = 'light';
-            else if (themeMode === 'light') themeMode = 'dark';
-            else themeMode = 'system';
-            
-            localStorage.setItem('theme', themeMode);
-            applyTheme();
-            
-            // 提示用户
-            const text = themeMode === 'system' ? '跟随系统' : (themeMode === 'dark' ? '深色模式' : '浅色模式');
-            showToast('主题已切换', text, 'success');
-        }
-
-
+        // === 2. 核心功能：加载文件 ===
         async function loadFiles(prefix) {
             setLoading(true);
             currentPath = prefix;
             updateBreadcrumb(prefix);
             try {
                 const res = await fetch(`/api/list?prefix=${encodeURIComponent(prefix)}`);
-                if (res.status === 401) return location.reload();
+                if (res.status === 401) return location.reload(); // 如果 session 过期
                 const data = await res.json();
-                allFiles = data;
+                allFiles = data; // 更新全局数据
                 renderFiles(data);
-                document.getElementById('fileCount').innerText = `${data.length} items`;
-            } catch(e) { console.error(e); showToast('加载失败', '检查网络', 'error'); }
-            setLoading(false);
-        }
-
-        function getMimeType(filename) {
-            const ext = filename.split('.').pop()?.toLowerCase();
-            switch (ext) {
-                case 'mp4': return 'video/mp4';
-                case 'webm': return 'video/webm';
-                case 'mov': return 'video/quicktime';
-                case 'avi': return 'video/x-msvideo';
-                case 'mp3': return 'audio/mpeg';
-                case 'wav': return 'audio/wav';
-                case 'm4a': return 'audio/mp4';
-                case 'aac': return 'audio/aac';
-                case 'jpg':
-                case 'jpeg': return 'image/jpeg';
-                case 'png': return 'image/png';
-                case 'gif': return 'image/gif';
-                case 'webp': return 'image/webp';
-                case 'svg': return 'image/svg+xml';
-                case 'pdf': return 'application/pdf';
-                case 'txt': return 'text/plain';
-                case 'html': return 'text/html';
-                case 'css': return 'text/css';
-                case 'js': return 'text/javascript';
-                case 'json': return 'application/json';
-                default: return 'application/octet-stream';
+            } catch(e) { 
+                console.error(e); 
+                showToast('加载失败', '检查网络', 'error'); 
+            } finally {
+                setLoading(false);
             }
         }
-        
-        function getFileCategory(filename) {
-            const ext = filename.split('.').pop().toLowerCase();
-            if (['mp3', 'wav', 'aac', 'm4a', 'flac'].includes(ext)) return { type: 'audio', label: '音频', color: 'bg-green-100 text-green-700' };
-            if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return { type: 'video', label: '视频', color: 'bg-blue-100 text-blue-700' };
-            if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return { type: 'image', label: '图片', color: 'bg-orange-100 text-orange-700' };
-            return { type: 'other', label: '其他', color: 'bg-gray-100 text-gray-500' };
-        }
 
-        function formatSize(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
+        // === 3. 核心功能：渲染列表 ===
         function renderFiles(items) {
             const container = document.getElementById('fileList');
             const isGrid = viewMode === 'grid';
             
+            // 动态设置容器样式
             container.className = isGrid 
-                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                : 'flex flex-col gap-3';
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in'
+                : 'flex flex-col gap-3 animate-fade-in';
             
+            // 更新计数
+            document.getElementById('fileCount').innerText = `${items ? items.length : 0} items`;
+
             if (!items || items.length === 0) {
-                container.innerHTML = `<div class="col-span-full py-20 flex flex-col items-center text-slate-300 dark:text-slate-500"><i data-lucide="ghost" class="w-16 h-16 mb-4 opacity-50"></i><p>无文件</p></div>`;
+                container.innerHTML = `<div class="col-span-full py-20 flex flex-col items-center text-slate-300 dark:text-slate-600"><i data-lucide="ghost" class="w-16 h-16 mb-4 opacity-50"></i><p>无文件</p></div>`;
                 lucide.createIcons();
                 return;
             }
@@ -521,7 +326,7 @@
                 const folderName = item.key.replace(currentPath, '').replace('/', '');
                 
                 if (item.isFolder) {
-                    // --- 文件夹视图 ---
+                    // --- 渲染文件夹 ---
                     if (isGrid) {
                         return `
                         <div onclick="loadFiles('${item.key}')" class="file-card cursor-pointer bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center aspect-[4/3] group">
@@ -533,58 +338,42 @@
                         </div>`;
                     } else {
                         return `
-                        <div onclick="loadFiles('${item.key}')" class="cursor-pointer bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl p-4 flex items-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                            <i data-lucide="folder" class="w-8 h-8 text-indigo-500 mr-4 fill-current"></i>
-                            <span class="font-bold text-slate-700 dark:text-slate-200">${folderName}</span>
+                        <div onclick="loadFiles('${item.key}')" class="cursor-pointer bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl p-3 flex items-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                            <i data-lucide="folder" class="w-6 h-6 text-indigo-500 mr-4 fill-current ml-2"></i>
+                            <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">${folderName}</span>
                         </div>`;
                     }
                 } else {
-                    // --- 文件视图 ---
+                    // --- 渲染文件 ---
                     const fileName = item.key.replace(currentPath, '');
                     const category = getFileCategory(fileName);
                     const uploadedTime = item.uploaded ? dayjs(item.uploaded).format('MM/DD HH:mm') : '-';
                     const proxyUrl = `${window.location.origin}/api/file/${item.key}`;
                     const publicUrl = customDomain ? `${customDomain}/${item.key}` : proxyUrl;
-
-                    // 2. 新增：决定预览使用的 URL (Preview Source)
-                    // 读取配置，只有当 (开关开启 && 设置了自定义域名) 时，才使用 publicUrl 进行预览
                     const useCdnPreview = localStorage.getItem('previewViaCDN') === 'true';
                     const previewSrc = (useCdnPreview && customDomain) ? publicUrl : proxyUrl;
 
-                    // 3. 修改预览 HTML 生成逻辑，将原来的 proxyUrl 替换为 previewSrc
-                    // 注意：下载链接(download)和复制链接(copy)的逻辑不变，只改 visual preview
-
+                    // 生成预览 HTML
                     let previewHtml = '';
                     if (isGrid) {
                          if (category.type === 'audio') {
-                             // audio 使用 previewSrc
                              previewHtml = `<div class="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-slate-700 p-4"><audio controls class="w-full h-8 block" preload="none"><source src="${previewSrc}"></audio></div>`;
-                         }
-                         else if (category.type === 'video') {
-                             // video 使用 previewSrc
-                             previewHtml = `
-                                <div class="w-full h-full bg-black flex items-center justify-center">
-                                    <video controls playsinline preload="metadata" class="w-full h-full object-contain" onplay="event.stopPropagation(); event.preventDefault();" onclick="event.stopPropagation();">
-                                        <source src="${previewSrc}" type="${getMimeType(fileName)}">
-                                    </video>
-                                </div>`;
-                         }
-                         else if (category.type === 'image') {
-                             // image 使用 previewSrc
+                         } else if (category.type === 'video') {
+                             previewHtml = `<div class="w-full h-full bg-black flex items-center justify-center"><video controls playsinline preload="metadata" class="w-full h-full object-contain" onplay="event.stopPropagation(); event.preventDefault();" onclick="event.stopPropagation();"><source src="${previewSrc}" type="${getMimeType(fileName)}"></video></div>`;
+                         } else if (category.type === 'image') {
                              previewHtml = `<img src="${previewSrc}" loading="lazy" class="w-full h-full object-cover">`;
-                         }
-                         else {
-                             previewHtml = `<div class="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-slate-700"><i data-lucide="file-text" class="w-12 h-12 text-slate-300 dark:text-slate-500"></i></div>`;
+                         } else {
+                             previewHtml = `<div class="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-slate-700"><i data-lucide="file-text" class="w-12 h-12 text-slate-300 dark:text-slate-600"></i></div>`;
                          }
                     } else {
-                        // 列表模式的小图标
+                        // 列表模式缩略图
                         previewHtml = category.type === 'image' 
-                            ? `<img src="${previewSrc}" loading="lazy" class="w-full h-full object-cover">` // 这里也改用 previewSrc
-                            : `<i data-lucide="file" class="text-slate-400 dark:text-slate-500 w-6 h-6"></i>`;
+                            ? `<img src="${previewSrc}" loading="lazy" class="w-full h-full object-cover">` 
+                            : `<i data-lucide="file" class="text-slate-400 dark:text-slate-500 w-5 h-5"></i>`;
                     }
 
                     if (isGrid) {
-                        // === Grid View ===
+                        // === 网格项 ===
                         return `
                         <div class="file-card bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden flex flex-col">
                             <div class="p-3 flex items-center justify-between border-b border-slate-50 dark:border-slate-700">
@@ -621,11 +410,11 @@
                             </div>
                         </div>`;
                     } else {
-                        // === List View  ===
+                        // === 列表项 ===
                         return `
                         <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl p-3 flex flex-col lg:flex-row gap-4 hover:shadow-md transition-all group relative">
                             <div class="flex items-center gap-4 flex-1 min-w-0">
-                                <div class="w-12 h-12 rounded-lg bg-slate-50 dark:bg-slate-700 flex items-center justify-center flex-shrink-0 overflow-hidden border border-slate-100 dark:border-slate-700">
+                                <div class="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-700 flex items-center justify-center flex-shrink-0 overflow-hidden border border-slate-100 dark:border-slate-700">
                                     ${previewHtml}
                                 </div>
                                 <div class="min-w-0 flex-1">
@@ -665,9 +454,179 @@
             lucide.createIcons();
         }
 
+        // === 4. 视图控制 ===
+        function setView(mode) {
+            viewMode = mode;
+            localStorage.setItem('viewMode', mode);
+            updateViewButtons();
+            
+            // 使用全局缓存的数据重新渲染 (解决切换列表为空的问题)
+            if (allFiles && allFiles.length > 0) {
+                renderFiles(allFiles);
+            } else {
+                loadFiles(currentPath); // 如果没有缓存，重新请求
+            }
+        }
+
+        function updateViewButtons() {
+            const gridBtn = document.getElementById('btn-grid');
+            const listBtn = document.getElementById('btn-list');
+            const activeClass = "shadow-sm bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400";
+            const inactiveClass = "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300";
+
+            if (viewMode === 'grid') {
+                gridBtn.className = `p-2 rounded-md transition-all ${activeClass}`;
+                listBtn.className = `p-2 rounded-md transition-all ${inactiveClass}`;
+            } else {
+                listBtn.className = `p-2 rounded-md transition-all ${activeClass}`;
+                gridBtn.className = `p-2 rounded-md transition-all ${inactiveClass}`;
+            }
+        }
+
+        // === 5. 登录逻辑 ===
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
+            
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> 验证中...`;
+            btn.disabled = true;
+            lucide.createIcons();
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+
+                if (res.ok) {
+                    document.getElementById('loginModal').classList.add('hidden');
+                    loadFiles(currentPath);
+                } else {
+                    showToast('登录失败', '账号或密码错误', 'error');
+                    btn.classList.add('animate-shake'); 
+                    setTimeout(() => btn.classList.remove('animate-shake'), 500);
+                }
+            } catch (err) {
+                showToast('错误', '网络连接异常', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        // === 6. 主题管理 ===
+        let themeMode = localStorage.getItem('theme') || 'system';
+
+        function initTheme() {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                if (themeMode === 'system') applyTheme();
+            });
+            applyTheme();
+        }
+
+        function applyTheme() {
+            const isDark = themeMode === 'dark' || 
+                          (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            
+            if (isDark) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+
+            const icon = document.getElementById('themeIcon');
+            if (icon) {
+                if (themeMode === 'light') icon.setAttribute('data-lucide', 'sun');
+                else if (themeMode === 'dark') icon.setAttribute('data-lucide', 'moon');
+                else icon.setAttribute('data-lucide', 'monitor');
+                lucide.createIcons();
+            }
+        }
+
+        function cycleTheme() {
+            if (themeMode === 'system') themeMode = 'light';
+            else if (themeMode === 'light') themeMode = 'dark';
+            else themeMode = 'system';
+            
+            localStorage.setItem('theme', themeMode);
+            applyTheme();
+            const text = themeMode === 'system' ? '跟随系统' : (themeMode === 'dark' ? '深色模式' : '浅色模式');
+            showToast('主题已切换', text, 'success');
+        }
+
+        // === 7. 设置管理 ===
+        function updateDomainStatus() {
+            const indicator = document.getElementById('domain-indicator');
+            if (!indicator) return;
+            const domain = localStorage.getItem('customDomain');
+            if (domain) {
+                try {
+                    const hostname = new URL(domain).hostname;
+                    indicator.innerHTML = `<span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400"><i data-lucide="globe" class="w-3 h-3"></i> ${hostname}</span>`;
+                } catch(e) { indicator.innerText = domain; }
+            } else {
+                indicator.innerHTML = `<span class="flex items-center gap-1 text-slate-400 dark:text-slate-500"><i data-lucide="server" class="w-3 h-3"></i> 代理模式 (Proxy)</span>`;
+            }
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function toggleSettings() { 
+            const modal = document.getElementById('settingsModal');
+            const panel = modal.firstElementChild;
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    modal.classList.remove('opacity-0');
+                    panel.classList.remove('scale-95');
+                    panel.classList.add('scale-100');
+                });
+            } else {
+                modal.classList.add('opacity-0');
+                panel.classList.remove('scale-100');
+                panel.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+        }
+        
+        function saveSettings() {
+            const input = document.getElementById('customDomainInput');
+            let domain = input.value.trim();
+            if (domain) {
+                if (!domain.startsWith('http://') && !domain.startsWith('https://')) domain = 'https://' + domain;
+                if (domain.endsWith('/')) domain = domain.slice(0, -1);
+            }
+
+            localStorage.setItem('customDomain', domain);
+            customDomain = domain;
+            localStorage.setItem('webpEnabled', document.getElementById('webpToggle').checked);
+            localStorage.setItem('webpQuality', document.getElementById('qualityInput').value);
+            localStorage.setItem('previewViaCDN', document.getElementById('cdnPreviewToggle').checked);
+
+            toggleSettings();
+            showToast('设置已保存', '配置已更新，即将刷新...', 'success');
+            setTimeout(() => location.reload(), 1000);
+        }
+
+        function toggleQualityInput() {
+            const isEnabled = document.getElementById('webpToggle').checked;
+            const div = document.getElementById('qualitySetting');
+            if (isEnabled) {
+                div.style.maxHeight = '100px';
+                div.style.opacity = '1';
+                div.style.marginTop = '0px';
+            } else {
+                div.style.maxHeight = '0px';
+                div.style.opacity = '0';
+                div.style.marginTop = '-10px';
+            }
+        }
+
+        // === 8. 工具函数 ===
         async function copyToClipboard(text) {
-            try { await navigator.clipboard.writeText(text); showToast('已复制', text); }
-            catch (err) { showToast('复制失败', '手动复制', 'error'); }
+            try { await navigator.clipboard.writeText(text); showToast('已复制', '链接已复制到剪贴板'); }
+            catch (err) { showToast('复制失败', '请手动复制', 'error'); }
         }
 
         function updateBreadcrumb(prefix) {
@@ -691,45 +650,37 @@
             setLoading(false);
         }
 
-        // 5. 核心修改：上传逻辑读取开关
+        // === 9. 上传逻辑 ===
         async function uploadFiles(files) {
             const path = document.getElementById('uploadPath').value.trim();
             let cleanPath = path.replace(/^\/+/,''); 
             if (cleanPath && !cleanPath.endsWith('/')) cleanPath += '/';
-                    
-            // 读取开关状态
+            
             const webpEnabled = localStorage.getItem('webpEnabled') !== 'false';
             const quality = parseFloat(localStorage.getItem('webpQuality')) || 0.8;
-                    
+            
             setLoading(true);
             let count = 0;
-        
             for (let file of files) {
                 try {
                     let body = file;
                     let finalName = cleanPath + file.name;
                     let mime = file.type;
-        
-                    // 只有在开关开启 && 是图片 && 不是动图/SVG 时才压缩
+                    
                     if (webpEnabled && file.type.startsWith('image/') && !file.type.includes('svg') && !file.type.includes('gif')) {
                         body = await processImage(file, quality);
-                        // 改后缀
                         finalName = cleanPath + file.name.replace(/\.[^/.]+$/, "") + ".webp";
                         mime = 'image/webp';
                     }
-        
+                    
                     const res = await fetch('/api/upload', {
                         method: 'PUT',
-                        headers: { 
-                            'x-file-name': finalName, 
-                            'content-type': mime 
-                        },
+                        headers: { 'x-file-name': finalName, 'content-type': mime },
                         body: body
                     });
                     if(res.ok) count++;
                 } catch(e) { console.error(e); }
             }
-                    
             setLoading(false);
             showToast('上传完成', `成功上传 ${count} 个文件`);
             loadFiles(currentPath);
@@ -748,40 +699,30 @@
             });
         }
 
+        // === 10. UI 交互 ===
         function showToast(title, message, type = 'success') {
             const div = document.createElement('div');
-            
-            // === 修改重点 ===
-            // 1. 基础样式：添加 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200
-            // 2. 保持 z-[200] 以覆盖登录框
+            // Z-Index 200 保证在登录框之上
             const baseClasses = "fixed bottom-5 right-5 z-[200] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl transform transition-all duration-300 translate-y-10 opacity-0 border backdrop-blur-md";
-            
-            // 适配白天/黑夜的背景色 (默认为白色背景，深色模式下为深灰背景)
             const themeClasses = "bg-white/90 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200";
-
             div.className = `${baseClasses} ${themeClasses}`;
 
             if(type === 'error') {
-                // 错误状态：覆盖背景为红色 (保持醒目，深色模式下稍微暗一点)
                 div.className = `${baseClasses} bg-red-50 dark:bg-red-900/50 border-red-200 dark:border-red-800 text-red-600 dark:text-red-200`;
                 div.innerHTML = `<i data-lucide="x-circle" class="w-5 h-5 text-red-500 dark:text-red-400"></i><div><h4 class="font-bold text-sm">错误</h4><p class="text-xs opacity-90">${message}</p></div>`;
             } else {
-                // 成功状态：使用上面的 themeClasses (自适应)
                 div.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 text-green-500 dark:text-green-400"></i><div><h4 class="font-bold text-sm">${title}</h4><p class="text-xs opacity-70">${message}</p></div>`;
             }
 
             document.body.appendChild(div);
             lucide.createIcons();
-
-            requestAnimationFrame(() => {
-                div.classList.remove('translate-y-10', 'opacity-0');
-            });
-
+            requestAnimationFrame(() => div.classList.remove('translate-y-10', 'opacity-0'));
             setTimeout(() => {
                 div.classList.add('translate-y-10', 'opacity-0');
                 setTimeout(() => div.remove(), 300);
             }, 3000);
         }
+
         function setLoading(state) { document.getElementById('loading').style.display = state ? 'flex' : 'none'; }
         
         document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -796,6 +737,28 @@
         fileInput.addEventListener('change', (e) => uploadFiles(e.target.files));
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }));
         dropZone.addEventListener('drop', (e) => uploadFiles(e.dataTransfer.files));
+
+        function getMimeType(filename) {
+            const ext = filename.split('.').pop()?.toLowerCase();
+            const map = { mp4:'video/mp4', webm:'video/webm', mov:'video/quicktime', avi:'video/x-msvideo', mp3:'audio/mpeg', wav:'audio/wav', m4a:'audio/mp4', aac:'audio/aac', jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp', svg:'image/svg+xml', pdf:'application/pdf', txt:'text/plain', html:'text/html', css:'text/css', js:'text/javascript', json:'application/json' };
+            return map[ext] || 'application/octet-stream';
+        }
+        
+        function getFileCategory(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (['mp3', 'wav', 'aac', 'm4a', 'flac'].includes(ext)) return { type: 'audio', label: '音频', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' };
+            if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return { type: 'video', label: '视频', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' };
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return { type: 'image', label: '图片', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' };
+            return { type: 'other', label: '其他', color: 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' };
+        }
+        
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
     </script>
 </body>
 </html>
