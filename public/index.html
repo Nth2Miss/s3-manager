@@ -60,6 +60,17 @@
                 </div>
             </div>
 
+            <div class="flex items-center justify-between mt-3 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <div>
+                    <label class="text-sm font-bold text-slate-700">使用 CDN 预览资源</label>
+                    <p class="text-xs text-slate-400">开启后，列表缩略图将通过自定义域名加载 (更快)</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="cdnPreviewToggle" class="sr-only peer">
+                    <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+            </div>
+
             <div class="border-t border-slate-100 my-4"></div>
 
             <div>
@@ -181,6 +192,10 @@
             const savedQuality = localStorage.getItem('webpQuality') || 0.8;
             document.getElementById('qualityInput').value = savedQuality;
             document.getElementById('qualityValue').innerText = savedQuality;
+            
+            // 初始化 CDN 预览开关 (默认关闭，为了稳定性)
+            const previewViaCDN = localStorage.getItem('previewViaCDN') === 'true';
+            document.getElementById('cdnPreviewToggle').checked = previewViaCDN;
         });
 
         function setView(mode) {
@@ -245,6 +260,9 @@
             if (domain.endsWith('/')) domain = domain.slice(0, -1);
             localStorage.setItem('customDomain', domain);
             customDomain = domain;
+
+            // 保存 CDN 预览设置
+            localStorage.setItem('previewViaCDN', document.getElementById('cdnPreviewToggle').checked);
 
             // 保存 WebP 设置
             const webpEnabled = document.getElementById('webpToggle').checked;
@@ -363,31 +381,40 @@
                     const proxyUrl = `${window.location.origin}/api/file/${item.key}`; 
                     const publicUrl = customDomain ? `${customDomain}/${item.key}` : proxyUrl;
 
-                    // 预览元素
+                    // 2. 新增：决定预览使用的 URL (Preview Source)
+                    // 读取配置，只有当 (开关开启 && 设置了自定义域名) 时，才使用 publicUrl 进行预览
+                    const useCdnPreview = localStorage.getItem('previewViaCDN') === 'true';
+                    const previewSrc = (useCdnPreview && customDomain) ? publicUrl : proxyUrl;
+
+                    // 3. 修改预览 HTML 生成逻辑，将原来的 proxyUrl 替换为 previewSrc
+                    // 注意：下载链接(download)和复制链接(copy)的逻辑不变，只改 visual preview
+
                     let previewHtml = '';
                     if (isGrid) {
-                         if (category.type === 'audio') previewHtml = `<div class="w-full h-full flex items-center justify-center bg-slate-50 p-4"><audio controls class="w-full h-8 block" preload="none"><source src="${proxyUrl}"></audio></div>`;
-                         else if (category.type === 'video') {
-                             previewHtml = `
-                                 <div class="w-full h-full bg-black flex items-center justify-center">
-                                     <video 
-                                         controls 
-                                         playsinline 
-                                         preload="metadata" 
-                                         class="w-full h-full object-contain"
-                                         onplay="event.stopPropagation(); event.preventDefault();"
-                                         onclick="event.stopPropagation();"
-                                     >
-                                         <source src="${proxyUrl}" type="${getMimeType(fileName)}">
-                                     </video>
-                                 </div>`;
+                         if (category.type === 'audio') {
+                             // audio 使用 previewSrc
+                             previewHtml = `<div class="w-full h-full flex items-center justify-center bg-slate-50 p-4"><audio controls class="w-full h-8 block" preload="none"><source src="${previewSrc}"></audio></div>`;
                          }
-                         else if (category.type === 'image') previewHtml = `<img src="${proxyUrl}" loading="lazy" class="w-full h-full object-cover">`;
-                         else previewHtml = `<div class="w-full h-full flex items-center justify-center bg-slate-50"><i data-lucide="file-text" class="w-12 h-12 text-slate-300"></i></div>`;
+                         else if (category.type === 'video') {
+                             // video 使用 previewSrc
+                             previewHtml = `
+                                <div class="w-full h-full bg-black flex items-center justify-center">
+                                    <video controls playsinline preload="metadata" class="w-full h-full object-contain" onplay="event.stopPropagation(); event.preventDefault();" onclick="event.stopPropagation();">
+                                        <source src="${previewSrc}" type="${getMimeType(fileName)}">
+                                    </video>
+                                </div>`;
+                         }
+                         else if (category.type === 'image') {
+                             // image 使用 previewSrc
+                             previewHtml = `<img src="${previewSrc}" loading="lazy" class="w-full h-full object-cover">`;
+                         }
+                         else {
+                             previewHtml = `<div class="w-full h-full flex items-center justify-center bg-slate-50"><i data-lucide="file-text" class="w-12 h-12 text-slate-300"></i></div>`;
+                         }
                     } else {
                         // 列表模式的小图标
                         previewHtml = category.type === 'image' 
-                            ? `<img src="${proxyUrl}" loading="lazy" class="w-full h-full object-cover">`
+                            ? `<img src="${previewSrc}" loading="lazy" class="w-full h-full object-cover">` // 这里也改用 previewSrc
                             : `<i data-lucide="file" class="text-slate-400 w-6 h-6"></i>`;
                     }
 
